@@ -4,6 +4,7 @@ const purple = "#7145d6";
 const blue = "#00b7ff";
 const green = "#1ac768";
 const pink = "#e91e63";
+const gray = "#5f545c";
 
 const poppins = "'Poppins', sans-serif";
 
@@ -16,6 +17,7 @@ const main: Theme = {
     secondary: blue,
     success: green,
     error: pink,
+    gray,
   },
 
   fonts: {

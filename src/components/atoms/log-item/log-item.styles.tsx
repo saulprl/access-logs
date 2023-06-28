@@ -79,14 +79,23 @@ const failedStyles = ({ theme }: { theme: Theme }) => css`
   font-size: 8px;
 `;
 
-export const Log = styled.div<{ variant: LogVariant }>`
+/**
+ * @deprecated
+ */
+const legacyStyles = ({ theme }: { theme: Theme }) => css`
+  background-color: ${theme.colors.gray};
+`;
+
+export const Log = styled.div<{ variant: LogVariant; isLegacy?: boolean }>`
   ${logStyles}
   ${({ variant }) => variant === "success" && successfulStyles};
   ${({ variant }) => variant === "success" && flashSuccess};
   ${({ variant }) => variant === "bluetooth" && bluetoothStyles};
   ${({ variant }) => variant === "failed" && failedStyles};
   ${({ variant }) => variant === "unknown" && failedStyles};
-  animation: 3s ease 1 forwards ${({ variant }) => animations[variant]};
+  ${({ isLegacy }) => isLegacy && legacyStyles};
+  animation: 3s ease 1 forwards
+    ${({ variant, isLegacy }) => !isLegacy && animations[variant]};
 `;
 
 export const LogName = styled.h1`

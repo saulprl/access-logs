@@ -2,7 +2,11 @@
 import { FC } from "react";
 
 import { DocumentReference, Timestamp } from "firebase/firestore";
-import { useFirestore, useFirestoreDocData } from "reactfire";
+import {
+  useDatabase,
+  useDatabaseListData,
+  useFirestoreDocData,
+} from "reactfire";
 
 import {
   Log,
@@ -12,6 +16,7 @@ import {
   TimestampContainer,
 } from "./log-item.styles";
 import { format } from "date-fns";
+import { equalTo, orderByChild, query, ref } from "firebase/database";
 
 export interface Attempt {
   csiId: string;
@@ -38,6 +43,20 @@ export interface Log {
   room: DocumentReference;
 }
 
+/**
+ * @deprecated
+ */
+export interface LegacyLog {
+  csiId: number;
+  timestamp: number;
+  accessed: boolean;
+  bluetooth?: boolean;
+  attemptData?: {
+    csiId: string;
+    passcode: string;
+  };
+}
+
 export interface CSIUser {
   unisonId: string;
   csiId: number;
@@ -50,26 +69,36 @@ export interface CSIUser {
   dateOfBirth: Timestamp;
 }
 
+/**
+ * @deprecated
+ */
+export interface LegacyUser {
+  name: string;
+  csiId: number;
+}
+
 export interface LogItemProps {
-  log: Log;
+  log: Log | LegacyLog;
   variant: LogVariant;
 }
 
 export const LogItem: FC<LogItemProps> = ({ log, variant }) => {
-  switch (variant) {
-    case "success":
-      return <SuccessfulLog log={log} />;
-    case "bluetooth":
-      return <BluetoothLog log={log} />;
-    case "failed":
-      return <FailedLog log={log} />;
-    default:
-      return <UnknownLog log={log} />;
+  if (variant === "unknown") {
+    return <UnknownLog log={log} />;
   }
+
+  if (!(log.timestamp instanceof Timestamp)) {
+    return <LegacyLog log={log} variant={variant} />;
+  }
+
+  return <_LogItem log={log} variant={variant} />;
 };
 
-const SuccessfulLog: FC<Pick<LogItemProps, "log">> = ({ log }) => {
-  const { status, data: userData } = useFirestoreDocData<CSIUser>(log.user!);
+const _LogItem: FC<LogItemProps> = ({ log, variant }) => {
+  const logItem = log as Log;
+  const { status, data: userData } = useFirestoreDocData<CSIUser>(
+    logItem.user!
+  );
 
   if (status === "loading") {
     return <span>Loading</span>;
@@ -79,12 +108,12 @@ const SuccessfulLog: FC<Pick<LogItemProps, "log">> = ({ log }) => {
     return <span>Something went wrong</span>;
   }
 
-  const timestamp = log.timestamp.toDate();
+  const timestamp = logItem.timestamp.toDate();
 
   return (
-    <Log variant="success">
+    <Log variant={variant}>
       <LogName>{userData.name}</LogName>
-      <TimestampContainer variant="success">
+      <TimestampContainer variant={variant}>
         <LogTimestamp>{format(timestamp, "HH:mm:ss")}</LogTimestamp>
         <LogTimestamp>{format(timestamp, "MMMM dd yyyy")}</LogTimestamp>
       </TimestampContainer>
@@ -92,61 +121,108 @@ const SuccessfulLog: FC<Pick<LogItemProps, "log">> = ({ log }) => {
   );
 };
 
-const BluetoothLog: FC<Pick<LogItemProps, "log">> = ({ log }) => {
-  const { status, data: userData } = useFirestoreDocData<CSIUser>(log.user!);
+// const BluetoothLog: FC<Pick<LogItemProps, "log">> = ({ log }) => {
+//   const logItem = log as Log;
+//   const { status, data: userData } = useFirestoreDocData<CSIUser>(
+//     logItem.user!
+//   );
 
-  if (status === "loading") {
-    return <span>Loading</span>;
-  }
+//   if (status === "loading") {
+//     return <span>Loading</span>;
+//   }
 
-  if (status === "error") {
-    return <span>Something went wrong</span>;
-  }
+//   if (status === "error") {
+//     return <span>Something went wrong</span>;
+//   }
 
-  const timestamp = log.timestamp.toDate();
+//   const timestamp = logItem.timestamp.toDate();
 
-  return (
-    <Log variant="bluetooth">
-      <LogName>{userData.name}</LogName>
-      <TimestampContainer variant="bluetooth">
-        <LogTimestamp>{format(timestamp, "HH:mm:ss")}</LogTimestamp>
-        <LogTimestamp>{format(timestamp, "MMMM dd yyyy")}</LogTimestamp>
-      </TimestampContainer>
-    </Log>
-  );
-};
+//   return (
+//     <Log variant="bluetooth">
+//       <LogName>{userData.name}</LogName>
+//       <TimestampContainer variant="bluetooth">
+//         <LogTimestamp>{format(timestamp, "HH:mm:ss")}</LogTimestamp>
+//         <LogTimestamp>{format(timestamp, "MMMM dd yyyy")}</LogTimestamp>
+//       </TimestampContainer>
+//     </Log>
+//   );
+// };
 
-const FailedLog: FC<Pick<LogItemProps, "log">> = ({ log }) => {
-  const { status, data: userData } = useFirestoreDocData<CSIUser>(log.user!);
+// const FailedLog: FC<Pick<LogItemProps, "log">> = ({ log }) => {
+//   const logItem = log as Log;
+//   const { status, data: userData } = useFirestoreDocData<CSIUser>(
+//     logItem.user!
+//   );
 
-  if (status === "loading") {
-    return <span>Loading</span>;
-  }
+//   if (status === "loading") {
+//     return <span>Loading</span>;
+//   }
 
-  if (status === "error") {
-    return <span>Something went wrong</span>;
-  }
+//   if (status === "error") {
+//     return <span>Something went wrong</span>;
+//   }
 
-  const timestamp = log.timestamp.toDate();
+//   const timestamp = logItem.timestamp.toDate();
 
-  return (
-    <Log variant="failed">
-      <LogName>{userData.name}</LogName>
-      <TimestampContainer variant="failed">
-        <LogTimestamp>{format(timestamp, "HH:mm:ss")}</LogTimestamp>
-        <LogTimestamp>{format(timestamp, "MMMM dd yyyy")}</LogTimestamp>
-      </TimestampContainer>
-    </Log>
-  );
-};
+//   return (
+//     <Log variant="failed">
+//       <LogName>{userData.name}</LogName>
+//       <TimestampContainer variant="failed">
+//         <LogTimestamp>{format(timestamp, "HH:mm:ss")}</LogTimestamp>
+//         <LogTimestamp>{format(timestamp, "MMMM dd yyyy")}</LogTimestamp>
+//       </TimestampContainer>
+//     </Log>
+//   );
+// };
 
 const UnknownLog: FC<Pick<LogItemProps, "log">> = ({ log }) => {
-  const timestamp = log.timestamp.toDate();
+  const logItem = log as Log;
+  const timestamp = logItem.timestamp.toDate();
 
   return (
     <Log variant="unknown">
       <LogName>Unknown user</LogName>
       <TimestampContainer variant="unknown">
+        <LogTimestamp>{format(timestamp, "HH:mm:ss")}</LogTimestamp>
+        <LogTimestamp>{format(timestamp, "MMMM dd yyyy")}</LogTimestamp>
+      </TimestampContainer>
+    </Log>
+  );
+};
+
+/**
+ * @deprecated
+ */
+const LegacyLog: FC<LogItemProps> = ({ log, variant }) => {
+  const logItem = log as LegacyLog;
+  const database = useDatabase();
+
+  const usersRef = ref(database, `users`);
+  const usersQuery = query(
+    usersRef,
+    orderByChild("csiId"),
+    equalTo(logItem.csiId)
+  );
+  const { status, data: user } = useDatabaseListData<LegacyUser>(usersQuery);
+
+  if (status === "loading") {
+    return <span>Loading...</span>;
+  }
+
+  if (status === "error") {
+    return <span>Something went wrong</span>;
+  }
+
+  let userName = "Unknown user";
+  const timestamp = new Date(logItem.timestamp);
+  if (user && user[0]) {
+    userName = user[0].name;
+  }
+
+  return (
+    <Log variant={variant} isLegacy={true}>
+      <LogName>{userName}</LogName>
+      <TimestampContainer variant={variant}>
         <LogTimestamp>{format(timestamp, "HH:mm:ss")}</LogTimestamp>
         <LogTimestamp>{format(timestamp, "MMMM dd yyyy")}</LogTimestamp>
       </TimestampContainer>
