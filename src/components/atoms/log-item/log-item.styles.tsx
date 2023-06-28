@@ -30,7 +30,7 @@ const flashSuccess = ({ theme }: { theme: Theme }) => keyframes`
   }
 `;
 
-const flashBluetooth = ({ theme }: { theme: Theme }) => keyframes`
+const flashBluetooth = keyframes`
   0%, 50%, 100% {
     background-position: 0% 0%;
   }
@@ -52,7 +52,7 @@ const flashFailed = ({ theme }: { theme: Theme }) => keyframes`
 
 const animations: Record<
   LogVariant,
-  ({ theme }: { theme: Theme }) => Keyframes
+  Keyframes | (({ theme }: { theme: Theme }) => Keyframes)
 > = {
   success: flashSuccess,
   bluetooth: flashBluetooth,
@@ -60,7 +60,7 @@ const animations: Record<
   unknown: flashFailed,
 };
 
-const successfulStyles = ({ theme }: { theme: Theme }) => css``;
+const successfulStyles = css``;
 
 const bluetoothStyles = ({ theme }: { theme: Theme }) => css`
   background: linear-gradient(
